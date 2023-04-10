@@ -3,6 +3,52 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from sklearn.cluster import KMeans
 
+# Python code implementation of the algorithm described in "A simple algorithm for the offline recalibration of eye-tracking data through best-fitting linear transformation" by Vadillo et al. (2018)
+import numpy as np
+from scipy import linalg
+
+def recalibrate_eye_data(x, y, p1, p2):
+    """
+    Recalibrates eye-tracking data using a best-fitting linear transformation.
+    
+    Parameters
+    ----------
+    x : numpy.ndarray
+        A 1D numpy array of x-coordinates of eye gaze positions.
+    y : numpy.ndarray
+        A 1D numpy array of y-coordinates of eye gaze positions.
+    p1 : tuple
+        A tuple of two 2D numpy arrays representing the calibration points 
+        from the original calibration.
+    p2 : tuple
+        A tuple of two 2D numpy arrays representing the calibration points 
+        from the recalibration.
+        
+    Returns
+    -------
+    x_new : numpy.ndarray
+        A 1D numpy array of recalibrated x-coordinates of eye gaze positions.
+    y_new : numpy.ndarray
+        A 1D numpy array of recalibrated y-coordinates of eye gaze positions.
+    """
+    # Extract calibration points from the original and recalibration data
+    A = np.vstack(p1[0])
+    B = np.vstack(p2[0])
+    
+    # Compute best-fitting linear transformation
+    M, res, rank, s = linalg.lstsq(A, B)
+    
+    # Recalibrate eye data using the transformation matrix
+    X = np.vstack([x, y])
+    X_new = M.dot(X)
+    
+    # Extract recalibrated x and y coordinates
+    x_new = X_new[0]
+    y_new = X_new[1]
+    
+    return x_new, y_new
+
+
 ######################################################################
 # ATTACH
 ######################################################################
