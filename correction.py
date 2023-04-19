@@ -1,19 +1,68 @@
+import re
+from enum import Enum
+import random
 
+# define categories using an Enum
+class TokenCategory(Enum):
+    KEYWORD = 1
+    IDENTIFIER = 2
+    LITERAL = 3
+    OPERATOR = 4
+    PUNCTUATION = 5
+    COMMENT = 6
+    WHITESPACE = 7
 
-# function to generate fixations at each word
-def generate_fixations_left_skip_regression(aois_with_tokens):
+# define regular expressions for different categories
+keyword_regex = re.compile(r'\b(and|as|assert|async|await|break|class|continue|def|del|elif|else|except|False|finally|for|from|global|if|import|in|is|lambda|None|nonlocal|not|or|pass|raise|return|True|try|while|with|yield)\b')
+identifier_regex = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+literal_regex = re.compile(r'^(-?\d+(\.\d+)?|\'.*?\'|".*?")$')
+operator_regex = re.compile(r'^(\+|\-|\*|\/|\%|\*\*|\>\>|\>\=|\<\<|\<\=|\<|\>|\=|\!\=|\&|\&&|\||\|\||\^|\~)$')
+punctuation_regex = re.compile(r'^(\,|\:|\;|\(|\)|\[|\]|\{|\}|\@|\=|\->|\+=|\-=|\*=|\/=|\%=|&=|\|=|\^=|\>>=|\<\<=|\*\*=|\/\/=)$')
+comment_regex = re.compile(r'^(\#.*$)')
+whitespace_regex = re.compile(r'^(\s+)$')
+
+def assign_categories_to_tokens(token_list):
+    # initialize an empty list to store the categories of each token
+    categories = []
+    
+    # iterate through each token in the list and assign its category
+    for token in token_list:
+        if keyword_regex.match(token):
+            categories.append(TokenCategory.KEYWORD)
+        elif identifier_regex.match(token):
+            categories.append(TokenCategory.IDENTIFIER)
+        elif literal_regex.match(token):
+            categories.append(TokenCategory.LITERAL)
+        elif operator_regex.match(token):
+            categories.append(TokenCategory.OPERATOR)
+        elif punctuation_regex.match(token):
+            categories.append(TokenCategory.PUNCTUATION)
+        elif comment_regex.match(token):
+            categories.append(TokenCategory.COMMENT)
+        elif whitespace_regex.match(token):
+            categories.append(TokenCategory.WHITESPACE)
+        else:
+            categories.append(None) # set None for unknown category
+    
+    return categories
+
+def generate_fixations_code(aois_with_tokens):
+
+    # assign categories to each token
+    categories = assign_categories_to_tokens([aoi.token for aoi in aois_with_tokens.itertuples()])
     
     fixations = []
     word_count = 0
     skip_count = 0
     regress_count = 0
-    
-    aoi_list = aois_with_tokens.values.tolist()
+    reread_count = 0
     
     index = 0
     
-    while index < len(aoi_list):
-        x, y, width, height, token = aoi_list[index][2], aoi_list[index][3], aoi_list[index][4], aoi_list[index][5], aoi_list[index][7]
+    while index < len(aois_with_tokens):
+        aoi = aois_with_tokens.iloc[index]
+        x, y, width, height, token = aoi["x"], aoi["y"], aoi["width"], aoi["height"], aoi["token"]
+        category = categories[index]
         
         word_count += 1
         
@@ -23,28 +72,58 @@ def generate_fixations_left_skip_regression(aois_with_tokens):
         last_skipped = False
 
         # skipping
-        if len(token) < 5 and random.random() < 0.3:
-            skip_count += 1 # fixations.append([fixation_x, fixation_y])
+        if category in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
+            skip_probability = 0.5
+        elif category in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
+            skip_probability = 0.3
+        elif category == TokenCategory.IDENTIFIER:
+            skip_probability = 0.2
+        else:
+            skip_probability = 0.1
+        
+        if len(token) < 5 and random.random() < skip_probability:
+            skip_count += 1
             last_skipped = True
         else:
             fixations.append([fixation_x, fixation_y, len(token) * 50])
             last_skipped = False
         
-        # regressions    
-        if  random.random() > 0.96:
-            index -= random.randint(1, 10)
-
+        # regression and reread
+        if last_skipped:
+            reread_probability = 0.5
+        elif category in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
+            reread_probability = 0.2
+        elif category in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
+            reread_probability = 0.1
+        elif category == TokenCategory.IDENTIFIER:
+            reread_probability = 0.05
+        else:
+            reread_probability = 0
+        
+        if random.random() < reread_probability:
+            reread_count += 1
+        elif random.random() > 0.96:
+            # between-line or previous-line regression
+            i = index
+            while i >= 0:
+                if categories[i] == TokenCategory.PUNCTUATION or i == 0:
+                    break
+                i -= 1
+            
+            if i == index:
+                index -= random.randint(1, 10)
+            else:
+                index = i + 1
+            
             if index < 0:
                 index = 0
 
             regress_count += 1
         
         index += 1
-            
-    
-    skip_probability = skip_count / word_count
     
     return fixations
+
 
 
 # write a function generate offset error as described in the paper
