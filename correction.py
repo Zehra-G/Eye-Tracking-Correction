@@ -1,6 +1,7 @@
 import re
 from enum import Enum
 import random
+import pandas as pd
 
 # define categories using an Enum
 class TokenCategory(Enum):
@@ -59,6 +60,9 @@ def generate_fixations_code(aois_with_tokens):
     
     index = 0
     
+    print(aois_with_tokens)
+    aois_with_tokens = aois_with_tokens.sample(frac = 1)
+    
     while index < len(aois_with_tokens):
         aoi = aois_with_tokens.iloc[index]
         x, y, width, height, token = aoi["x"], aoi["y"], aoi["width"], aoi["height"], aoi["token"]
@@ -73,13 +77,13 @@ def generate_fixations_code(aois_with_tokens):
 
         # skipping
         if category in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
-            skip_probability = 0.5
+            skip_probability = 0.9
         elif category in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
-            skip_probability = 0.3
+            skip_probability = 0.5
         elif category == TokenCategory.IDENTIFIER:
-            skip_probability = 0.2
+            skip_probability = 0.6
         else:
-            skip_probability = 0.1
+            skip_probability = 0.8
         
         if len(token) < 5 and random.random() < skip_probability:
             skip_count += 1
@@ -90,7 +94,7 @@ def generate_fixations_code(aois_with_tokens):
         
         # regression and reread
         if last_skipped:
-            reread_probability = 0.5
+            reread_probability = 0.01
         elif category in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
             reread_probability = 0.2
         elif category in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
