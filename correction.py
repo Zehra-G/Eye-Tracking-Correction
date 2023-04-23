@@ -297,9 +297,33 @@ def error_within_line_regression(regression_probability, fixations, words_sorted
 
     return results # return the final list of results
 
+def error_between_line_reg(reg_probability, fixations):
+    '''creates error to move fixations (between reg in dissertation)'''
+    
+      
+    results = []
+    num_fix = 1
+    for fix in fixations:
+        x, y, duration = fix[0], fix[1], fix[2]
+        
+        if reg_probability > random.random():
+            results.append(fix)
+            pick = True
+            while pick:
+                reg = random.choice(fixations[:num_fix])
+                if abs(reg[1] - y) >= 50 or abs(reg[1] - y) == 0 :
+                    results.append(reg)
+                    pick = False
+        else:
+            results.append(fix)
+        num_fix += 1
+                
+    return results  
+
 # between line regression
+'''
 def error_between_line_regression(regression_probability, fixations, words_sorted, aoi_lines, duplicate_fixations = True):
-    '''creates a within-line regression error by adding additional fixations to the current line'''
+   
     
     results = [] # creates an empty list `results` to store the results
 
@@ -349,6 +373,7 @@ def error_between_line_regression(regression_probability, fixations, words_sorte
     if duplicate_fixations:
         return results, new_fixations
     return results # return the final list of results
+'''
 
 # droop
 
