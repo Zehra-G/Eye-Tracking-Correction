@@ -61,7 +61,29 @@ def generate_fixations_code(aois_with_tokens):
     index = 0
     
     print(aois_with_tokens)
-    aois_with_tokens = aois_with_tokens.sample(frac = 1)
+    
+    # pure random
+    #aois_with_tokens = aois_with_tokens.sample(frac = 1)
+    
+    # raddom but with a probability distribution
+    prob_list = []
+    for p in categories:
+        if p in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
+            prob = 0.1
+        elif p in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
+            prob = 0.6
+        elif p == TokenCategory.IDENTIFIER:
+            prob = 0.8
+        else:
+            prob = 0.4
+        
+        prob_list.append(prob)
+        
+    aois_with_tokens['Probability'] = prob_list
+    
+    aois_with_tokens = aois_with_tokens.sample(n=len(aois_with_tokens), replace=True, weights='Probability', axis=0)
+    
+        
     
     while index < len(aois_with_tokens):
         aoi = aois_with_tokens.iloc[index]
