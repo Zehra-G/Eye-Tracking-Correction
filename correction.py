@@ -47,6 +47,26 @@ def assign_categories_to_tokens(token_list):
     
     return categories
 
+def generate_fix_2(aois_with_tokens):
+    
+    # creates fixations like the usual
+    fix = generate_fixations_code(aois_with_tokens)
+   
+   # adds start-time and endtime
+   
+    start = 0
+    end = 0
+    for i in range(len(fix)):
+        fix[i].append(start)
+        end = fix[i][2] + start
+        fix[i].append(end)
+        start = end
+       
+    return fix
+       
+   
+
+
 def generate_fixations_code(aois_with_tokens):
 
     # assign categories to each token
@@ -60,7 +80,6 @@ def generate_fixations_code(aois_with_tokens):
     
     index = 0
     
-    print(aois_with_tokens)
     
     # pure random
     #aois_with_tokens = aois_with_tokens.sample(frac = 1)

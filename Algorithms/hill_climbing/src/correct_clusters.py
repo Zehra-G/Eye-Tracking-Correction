@@ -18,6 +18,9 @@ Copyright 2015
 Author: Chris Palmer
 """
 
+import pandas as pd
+
+
 
 def correct_cluster(listofclusters, listofaois):
     """
@@ -40,14 +43,19 @@ def correct_cluster(listofclusters, listofaois):
 
         note: all passes are done by reference
     """
+    listofaois = listofaois.values.tolist()
     for cluster in listofclusters:
         for point in cluster:
-            point.autoxCorrected = point.x
-            point.autoyCorrected = point.y
+            point.append(point[0])
+            point.append(point[1])
         if find_score_multi_aoi(cluster, listofaois) == 0:
             move_cluster_toward_aoi(cluster, listofaois)
 
         hillclimb(cluster, listofaois)
+        
+        
+                
+    return listofclusters
 
 
 def find_score_multi_aoi(cluster, listofaois):
@@ -63,7 +71,7 @@ def find_score_multi_aoi(cluster, listofaois):
     for point in cluster:
         if debug_points.count(point) > 0:
             # todo throw an exception?
-            print "point repeat error"
+            print ("point repeat error")
         debug_points.append(point)
 
         for aoi in listofaois:
@@ -93,8 +101,8 @@ def point_in_aoi(point, aoi):
         return True if the point is within the defined AOI rectangle
         return False if the point is not within the AOI rectangle
     """
-    if point.autoxCorrected >= aoi.x and point.autoxCorrected <= (aoi.x + aoi.width):
-        if point.autoyCorrected >= aoi.y and point.autoyCorrected <= (aoi.y + aoi.height):
+    if point[5] >= aoi[2] and point[5] <= (aoi[2] + aoi[4]):
+        if point[6] >= aoi[3] and point[6] <= (aoi[3] + aoi[5]):
             return True
         else:
             return False
@@ -189,19 +197,19 @@ def shift_dir(cluster, direction, distance):
     """
     if direction == 'left':
         for point in cluster:
-            point.autoxCorrected -= distance
+            point[5] -= distance
 
     if direction == 'right':
         for point in cluster:
-            point.autoxCorrected += distance
+            point[5] += distance
 
     if direction == 'up':
         for point in cluster:
-            point.autoyCorrected -= distance
+            point[6] -= distance
 
     if direction == 'down':
         for point in cluster:
-            point.autoyCorrected += distance
+            point[6] += distance
 
     return
 
@@ -218,19 +226,19 @@ def move_cluster_toward_aoi(cluster, listofaois):
     nearestaoi = find_nearest_aoi(cluster, listofaois)
     while find_score_multi_aoi(cluster, listofaois) == 0:
         moved = False
-        if nearestaoi.x < get_minX(cluster):
+        if nearestaoi[2] < get_minX(cluster):
             #print('left')
             shift_dir(cluster, 'left', 1)
             moved = True
-        elif nearestaoi.x > get_minX(cluster):
+        elif nearestaoi[2] > get_minX(cluster):
             #print('right')
             shift_dir(cluster, 'right', 1)
             moved = True
-        if nearestaoi.y < get_minY(cluster):
+        if nearestaoi[3] < get_minY(cluster):
             #print('up')
             shift_dir(cluster, 'up', 1)
             moved = True
-        elif nearestaoi.y > get_minY(cluster):
+        elif nearestaoi[3] > get_minY(cluster):
             #print('down')
             shift_dir(cluster, 'down', 1)
             moved = True
@@ -250,8 +258,8 @@ def get_maxX(cluster):
     """
     maxX = 0
     for point in cluster:
-        if point.autoxCorrected > maxX:
-            maxX = point.autoxCorrected
+        if point[5] > maxX:
+            maxX = point[5]
     return maxX
 
 
@@ -266,8 +274,8 @@ def get_maxY(cluster):
     """
     maxY = 0
     for point in cluster:
-        if point.autoyCorrected > maxY:
-            maxY = point.autoyCorrected
+        if point[6] > maxY:
+            maxY = point[6]
     return maxY
 
 
@@ -280,10 +288,10 @@ def get_minX(cluster):
     POSTCONDITION(S):
         retuen the smallest autoxCorrected value
     """
-    minX = cluster[0].x
+    minX = cluster[0][0]
     for point in cluster:
-        if point.autoxCorrected < minX:
-            minX = point.autoxCorrected
+        if point[5] < minX:
+            minX = point[5]
     return minX
 
 
@@ -296,10 +304,10 @@ def get_minY(cluster):
     POSTCONDITION(S):
         return the smallest autoyCorrected value in cluster
     """
-    minY = cluster[0].y
+    minY = cluster[0][1]
     for point in cluster:
-        if point.autoyCorrected < minY:
-            minY = point.autoyCorrected
+        if point[6] < minY:
+            minY = point[6]
     return minY
 
 
@@ -319,7 +327,7 @@ def find_nearest_aoi(cluster, listofaois):
     minY = get_minY(cluster)
     nearestaoi = listofaois[0]
     for i in range(1, len(listofaois)):
-        if abs(listofaois[i].x - minX) < abs(nearestaoi.x - minX) and abs(listofaois[i].y - minY) < abs(nearestaoi.y - minY):
+        if abs(listofaois[i][2] - minX) < abs(nearestaoi[2] - minX) and abs(listofaois[i][3] - minY) < abs(nearestaoi[3] - minY):
             nearestaoi = listofaois[i]
 
     return nearestaoi

@@ -20,7 +20,6 @@ Author: Chris Palmer
 
 import math
 import numpy
-import globalVariables
 
 # global variable(s)
 
@@ -65,7 +64,7 @@ def contains(list, filter):
     return False
 
 
-f = globalVariables.files
+
 
 
 def median(lst):
@@ -87,6 +86,23 @@ def create_cluster(sessionpoints):
     print("create cluster method")
 
 
+def generate_fix_2(aois_with_tokens):
+    
+    # creates fixations like the usual
+ 
+    #aois_with_tokens = aois_with_tokens.tolist()
+   # adds start-time and endtime
+   
+    start = 0
+    end = 0
+    for i in range(len(aois_with_tokens)):
+        aois_with_tokens[i].append(start)
+        end = aois_with_tokens[i][2] + start
+        aois_with_tokens[i].append(end)
+        start = end
+    
+    return aois_with_tokens
+
 # Take list of points
 # Return list of clusters
 def make_cluster_refactor(listOfPoints):
@@ -95,6 +111,9 @@ def make_cluster_refactor(listOfPoints):
     PRECONDITION(S):
     POSTCONDITION(S):
     """
+    
+    listOfPoints = generate_fix_2(listOfPoints)
+   
     # variables
     # lookbackQueue[0]  = oldest element
     # lookbackQueue[-1] = newest element
@@ -114,7 +133,7 @@ def make_cluster_refactor(listOfPoints):
 
             else:
                 lookbackQueue.append(point)
-                if lookbackQueue[-1].startTime - lookbackQueue[0].startTime < globalVariables.LOOKBACK_SIZE_MS:
+                if lookbackQueue[-1][3] - lookbackQueue[0][3] < 15000:
                     continue
                 else:
                     lookbackQueueInitialized = True
@@ -122,12 +141,12 @@ def make_cluster_refactor(listOfPoints):
         # todo ponder the questionable nature of possibly losing a point
         # maybe check for clusters during initalization
         else:
-            while lookbackQueue[-1].startTime - lookbackQueue[0].startTime > globalVariables.LOOKBACK_SIZE_MS:
+            while lookbackQueue[-1][3] - lookbackQueue[0][3] > 15000:
                 lookbackQueue.pop(0)
             if check_if_cluster_too_big(lookbackQueue, totalMedian):
                 # todo ouput to log file
                 for each in lookbackQueue:
-                    output.write(str(each.startTime) + '\n')
+                    output.write(str(each[3]) + '\n')
                 output.write('\n')
                 if find_distance(lookbackQueue[-1], lookbackQueue[-2]) >= totalMedian:
                     # clear the queue except for the newest point
@@ -192,10 +211,10 @@ def find_median(listOfPoints):
     pointDistances = []
 
     for i in range(1, len(listOfPoints)):
-        point1x = int(listOfPoints[i].x)
-        point1y = int(listOfPoints[i].y)
-        point2x = int(listOfPoints[i-1].x)
-        point2y = int(listOfPoints[i-1].y)
+        point1x = int(listOfPoints[i][0])
+        point1y = int(listOfPoints[i][1])
+        point2x = int(listOfPoints[i-1][0])
+        point2y = int(listOfPoints[i-1][1])
 
         distance = math.sqrt(math.pow(point2x-point1x, 2) +
                              math.pow(point2y-point1y, 2))
@@ -204,10 +223,10 @@ def find_median(listOfPoints):
     minimum = min(pointDistances)
     maximum = max(pointDistances)
 
-    if globalVariables.MEDIAN_OFFSET > 0:
-        return numpy.median(numpy.array(pointDistances)) + (globalVariables.MEDIAN_OFFSET * (maximum - numpy.median(numpy.array(pointDistances))))
-    elif globalVariables.MEDIAN_OFFSET < 0:
-        return numpy.median(numpy.array(pointDistances)) - (globalVariables.MEDIAN_OFFSET * (numpy.median(numpy.array(pointDistances)) - minimum))
+    if .175 > 0:
+        return numpy.median(numpy.array(pointDistances)) + (.175 * (maximum - numpy.median(numpy.array(pointDistances))))
+    elif .175 < 0:
+        return numpy.median(numpy.array(pointDistances)) - (.175* (numpy.median(numpy.array(pointDistances)) - minimum))
     else:
         return numpy.median(numpy.array(pointDistances))
 
@@ -218,8 +237,8 @@ def find_distance(point1, point2):
     PRECONDITION(S):
     POSTCONDITION(S):
     """
-    return math.sqrt(math.pow(int(point2.x - point1.x), 2) +
-                     math.pow(int(point2.y - point1.y), 2))
+    return math.sqrt(math.pow(int(point2[1] - point1[0]), 2) +
+                     math.pow(int(point2[1] - point1[0]), 2))
 
 
 # take queue and median distance as parameter and return boolean of whether or not there is a cluster in the queue
@@ -238,7 +257,7 @@ def check_for_cluster(lookbackQueue, totalMedian):
         if find_distance(lookbackQueue[i], lookbackQueue[i-1]) < totalMedian:
             clusterSize += 1
         else:
-            if clusterSize >= globalVariables.MINIMUM_CLUSTER_SIZE:
+            if clusterSize >= 3:
                 return True
             else:
                 clusterSize = 0
@@ -258,7 +277,7 @@ def extract_cluster(lookbackQueue, totalMedian): # todo reread this
     cluster = []
     firstLoop = True
     for i in range(1, len(lookbackQueue)):
-        if lookbackQueue[i].startTime - lookbackQueue[i-1].startTime < totalMedian:
+        if lookbackQueue[i][3] - lookbackQueue[i-1][3] < totalMedian:
             if firstLoop:
                 cluster.append(lookbackQueue[i-1])
                 cluster.append(lookbackQueue[i])
@@ -266,7 +285,7 @@ def extract_cluster(lookbackQueue, totalMedian): # todo reread this
             else:
                 cluster.append(lookbackQueue[i])
 
-    if len(cluster) >= globalVariables.MINIMUM_CLUSTER_SIZE:
+    if len(cluster) >= 3:
         NUMBER_OF_ELEMENTS_TO_REMOVE = len(cluster)
         return cluster
     return
@@ -281,7 +300,7 @@ def check_if_cluster_too_big(lookbackQueue, totalMedian):
     """
     tooBig = True
     for i in range(1, len(lookbackQueue)):
-        if lookbackQueue[i].startTime - lookbackQueue[i-1].startTime >= totalMedian:
+        if lookbackQueue[i][3] - lookbackQueue[i-1][3] >= totalMedian:
             tooBig = False
     if tooBig:
         print("too big")

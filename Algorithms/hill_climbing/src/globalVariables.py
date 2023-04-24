@@ -19,14 +19,13 @@ Author: Chris Palmer
 """
 
 import os
-import read_files
+
 
 # variables used globally
 
 # TODO modify this so that it gives the root directory of project
 # current directory... might actually be the directory of globalVariables
-current_directory = os.path.dirname(os.path.realpath(__file__))+"/eye-tracking-data"
-files = read_files.read(current_directory)
+
 AOI_FILES = {}
 
 # settings that will be modified by testing
