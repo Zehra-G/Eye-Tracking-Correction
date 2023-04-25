@@ -19,13 +19,90 @@ Author: Chris Palmer
 """
 
 import math
-import numpy
+import numpy 
+
+class Point():
+    """
+    Point (int, int, int, int, int, str, int, int, str)
+    CONSTRUCTION:
+        set internal variables to param values
+
+    METHOD(S):
+        bool/float xCorrectionCoefficient()
+        PRECONDITION(S):
+            xCorrected != x
+
+        POSTCONDITION(S):
+            return (xautocorrected-x)/(xCorrected-x)
+
+        bool/float yCorrectionCoefficient()
+        PRECONDITION(S):
+            yCorrected != y
+        POSTCONDITION(S):
+            return (yautocorrected-y)/(yCorrected-y)
+
+    MEMBER VARIABLE(S):
+        x int - the original x coordinate of fixation point
+        y int - the original y coordinate of fixation point
+        duration int - the time ms? spent on that fixation
+        startTime int - the start time ms? of the fixation point
+        endTime int - the end time ms? of the fixation point
+        aoi str - the type of aoi that the point is associated with line/subline can be None
+        xCorrected int - manually corrected x coordinate
+        yCorrected int - manually corrected y coordinate
+        filename str - name of the file for fixation data
+        autoxCorrected int - auto corrected x coordinate
+        autoyCorrected int - auto corrected y coordinate
+    """
+    def __init__(self, x, y, duration, startTime, endTime, aoi, xCorrected, yCorrected, filename):
+        self.x = x
+        self.y = y
+        self.duration = duration
+        self.startTime = startTime
+        self.endTime = endTime
+        self.aoi = aoi
+        self.xCorrected = xCorrected
+        self.yCorrected = yCorrected
+        self.filename = filename
+        self.autoxCorrected = None
+        self.autoyCorrected = None
+
+    def xCorrectionCoefficient(self):
+        if not self.autoxCorrected:
+            return (self.autoxCorrected-self.x)/(self.xCorrected-self.x)
+        else:
+            return False
+
+    def yCorrectionCoeffieient(self):
+        if not self.autoyCorrected:
+            return (self.autoyCorrected-self.y)/(self.yCorrected-self.y)
+        else:
+            return False
+        
 
 # global variable(s)
 
 NUMBER_OF_ELEMENTS_TO_REMOVE = 0
 
 # function to check if object exists in list
+
+def make_points(fixations):
+    
+    fixations = fixations.tolist()
+    start = 0
+    end = 0
+    for i in range(len(fixations)):
+        fixations[i].append(start)
+        end = fixations[i][2] + start
+        fixations[i].append(end)
+        start = end
+        
+    point_list = []
+    for point in fixations:
+        point_list.append(Point(point[0], point[1], point[2], point[3], point[4], None, None, None, None))
+        
+           
+    return point_list
 
 
 def make_one_cluster_per_file(listOfPoints):
@@ -64,9 +141,6 @@ def contains(list, filter):
     return False
 
 
-
-
-
 def median(lst):
     """
     <estimated return type> <function_name> (<parameters>)
@@ -86,23 +160,6 @@ def create_cluster(sessionpoints):
     print("create cluster method")
 
 
-def generate_fix_2(aois_with_tokens):
-    
-    # creates fixations like the usual
- 
-    #aois_with_tokens = aois_with_tokens.tolist()
-   # adds start-time and endtime
-   
-    start = 0
-    end = 0
-    for i in range(len(aois_with_tokens)):
-        aois_with_tokens[i].append(start)
-        end = aois_with_tokens[i][2] + start
-        aois_with_tokens[i].append(end)
-        start = end
-    
-    return aois_with_tokens
-
 # Take list of points
 # Return list of clusters
 def make_cluster_refactor(listOfPoints):
@@ -111,18 +168,20 @@ def make_cluster_refactor(listOfPoints):
     PRECONDITION(S):
     POSTCONDITION(S):
     """
-    
-    listOfPoints = generate_fix_2(listOfPoints)
-   
     # variables
     # lookbackQueue[0]  = oldest element
     # lookbackQueue[-1] = newest element
+    
+    
     lookbackQueue = []
     listOfClusters = []
+    listOfPoints = make_points(listOfPoints)
     totalMedian = find_median(listOfPoints)
     lookbackQueueInitialized = False
     firstLoop = True
     output = open('overflowlog.txt', 'w')
+    
+    
 
     for point in listOfPoints:
         # Initialize the queue as full
@@ -133,7 +192,7 @@ def make_cluster_refactor(listOfPoints):
 
             else:
                 lookbackQueue.append(point)
-                if lookbackQueue[-1][3] - lookbackQueue[0][3] < 15000:
+                if lookbackQueue[-1].startTime - lookbackQueue[0].startTime < 15000:
                     continue
                 else:
                     lookbackQueueInitialized = True
@@ -141,12 +200,12 @@ def make_cluster_refactor(listOfPoints):
         # todo ponder the questionable nature of possibly losing a point
         # maybe check for clusters during initalization
         else:
-            while lookbackQueue[-1][3] - lookbackQueue[0][3] > 15000:
+            while lookbackQueue[-1].startTime - lookbackQueue[0].startTime > 15000:
                 lookbackQueue.pop(0)
             if check_if_cluster_too_big(lookbackQueue, totalMedian):
                 # todo ouput to log file
                 for each in lookbackQueue:
-                    output.write(str(each[3]) + '\n')
+                    output.write(str(each.startTime) + '\n')
                 output.write('\n')
                 if find_distance(lookbackQueue[-1], lookbackQueue[-2]) >= totalMedian:
                     # clear the queue except for the newest point
@@ -168,6 +227,7 @@ def make_cluster_refactor(listOfPoints):
                 lookbackQueueInitialized = False
 
             # else there is a cluster in progress. Do nothing. Move along. These aren't the droids you're looking for
+    print("Iiiiiiiiiiiiiiiiiiiiiiiiiiiii")
 
     return listOfClusters
 
@@ -211,10 +271,10 @@ def find_median(listOfPoints):
     pointDistances = []
 
     for i in range(1, len(listOfPoints)):
-        point1x = int(listOfPoints[i][0])
-        point1y = int(listOfPoints[i][1])
-        point2x = int(listOfPoints[i-1][0])
-        point2y = int(listOfPoints[i-1][1])
+        point1x = int(listOfPoints[i].x)
+        point1y = int(listOfPoints[i].y)
+        point2x = int(listOfPoints[i-1].x)
+        point2y = int(listOfPoints[i-1].y)
 
         distance = math.sqrt(math.pow(point2x-point1x, 2) +
                              math.pow(point2y-point1y, 2))
@@ -224,9 +284,9 @@ def find_median(listOfPoints):
     maximum = max(pointDistances)
 
     if .175 > 0:
-        return numpy.median(numpy.array(pointDistances)) + (.175 * (maximum - numpy.median(numpy.array(pointDistances))))
-    elif .175 < 0:
-        return numpy.median(numpy.array(pointDistances)) - (.175* (numpy.median(numpy.array(pointDistances)) - minimum))
+        return numpy.median(numpy.array(pointDistances)) + (0.175 * (maximum - numpy.median(numpy.array(pointDistances))))
+    elif 0.175 < 0:
+        return numpy.median(numpy.array(pointDistances)) - (0.175 * (numpy.median(numpy.array(pointDistances)) - minimum))
     else:
         return numpy.median(numpy.array(pointDistances))
 
@@ -237,8 +297,8 @@ def find_distance(point1, point2):
     PRECONDITION(S):
     POSTCONDITION(S):
     """
-    return math.sqrt(math.pow(int(point2[1] - point1[0]), 2) +
-                     math.pow(int(point2[1] - point1[0]), 2))
+    return math.sqrt(math.pow(int(point2.x - point1.x), 2) +
+                     math.pow(int(point2.y - point1.y), 2))
 
 
 # take queue and median distance as parameter and return boolean of whether or not there is a cluster in the queue
@@ -277,7 +337,7 @@ def extract_cluster(lookbackQueue, totalMedian): # todo reread this
     cluster = []
     firstLoop = True
     for i in range(1, len(lookbackQueue)):
-        if lookbackQueue[i][3] - lookbackQueue[i-1][3] < totalMedian:
+        if lookbackQueue[i].startTime - lookbackQueue[i-1].startTime < totalMedian:
             if firstLoop:
                 cluster.append(lookbackQueue[i-1])
                 cluster.append(lookbackQueue[i])
@@ -300,7 +360,7 @@ def check_if_cluster_too_big(lookbackQueue, totalMedian):
     """
     tooBig = True
     for i in range(1, len(lookbackQueue)):
-        if lookbackQueue[i][3] - lookbackQueue[i-1][3] >= totalMedian:
+        if lookbackQueue[i].startTime - lookbackQueue[i-1].startTime >= totalMedian:
             tooBig = False
     if tooBig:
         print("too big")

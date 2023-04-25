@@ -17,9 +17,55 @@ along with Fixation-Correction-Sourcecode.  If not, see <http://www.gnu.org/lice
 Copyright 2015
 Author: Chris Palmer
 """
+import pandas
 
-import pandas as pd
+class Aoi():
+    """
+    Aoi (str, str, int, int, int, int)
+    CONSTRUCTION:
+        set internal variable to the ones read from csv
 
+    METHOD(S):
+        bool containsPoint(int, int)
+        PRECONDITION(S):
+            given valid x and y ints
+        POSTCONDITION(S):
+            returns whether or not the given values are within the AOI rectangle
+
+    MEMBER VARIABLE(S):
+    kind str - type of AOI, line/subline
+    name str - name of th aoi
+    x int - top left x coordinate
+    y int - top left y coordinate
+    width int - width of rectangle
+    height int - height of rectangle
+    """
+    def __init__(self, kind, name, x, y, width, height):
+        self.kind = kind
+        self.name = name
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+    def containsPoint(self, pointx, pointy):
+        if pointx > self.x and pointx < (self.x + self.width):
+            if pointy > self.y and pointy < (self.y + self.width):
+                return True
+        return False
+
+def make_aois(aois):
+    
+    aois = aois.values.tolist()
+    aois_list =[]
+    for a in aois:
+        aois_list.append(Aoi(a[0], a[1], a[2], a[3], a[4], a[5]))
+        
+    return aois_list
+    
+    
+    
+    pass
 
 
 def correct_cluster(listofclusters, listofaois):
@@ -43,19 +89,15 @@ def correct_cluster(listofclusters, listofaois):
 
         note: all passes are done by reference
     """
-    listofaois = listofaois.values.tolist()
+    listofaois = make_aois(listofaois)
     for cluster in listofclusters:
         for point in cluster:
-            point.append(point[0])
-            point.append(point[1])
+            point.autoxCorrected = point.x
+            point.autoyCorrected = point.y
         if find_score_multi_aoi(cluster, listofaois) == 0:
             move_cluster_toward_aoi(cluster, listofaois)
 
         hillclimb(cluster, listofaois)
-        
-        
-                
-    return listofclusters
 
 
 def find_score_multi_aoi(cluster, listofaois):
@@ -101,8 +143,8 @@ def point_in_aoi(point, aoi):
         return True if the point is within the defined AOI rectangle
         return False if the point is not within the AOI rectangle
     """
-    if point[5] >= aoi[2] and point[5] <= (aoi[2] + aoi[4]):
-        if point[6] >= aoi[3] and point[6] <= (aoi[3] + aoi[5]):
+    if point.autoxCorrected >= aoi.x and point.autoxCorrected <= (aoi.x + aoi.width):
+        if point.autoyCorrected >= aoi.y and point.autoyCorrected <= (aoi.y + aoi.height):
             return True
         else:
             return False
@@ -197,19 +239,19 @@ def shift_dir(cluster, direction, distance):
     """
     if direction == 'left':
         for point in cluster:
-            point[5] -= distance
+            point.autoxCorrected -= distance
 
     if direction == 'right':
         for point in cluster:
-            point[5] += distance
+            point.autoxCorrected += distance
 
     if direction == 'up':
         for point in cluster:
-            point[6] -= distance
+            point.autoyCorrected -= distance
 
     if direction == 'down':
         for point in cluster:
-            point[6] += distance
+            point.autoyCorrected += distance
 
     return
 
@@ -226,19 +268,19 @@ def move_cluster_toward_aoi(cluster, listofaois):
     nearestaoi = find_nearest_aoi(cluster, listofaois)
     while find_score_multi_aoi(cluster, listofaois) == 0:
         moved = False
-        if nearestaoi[2] < get_minX(cluster):
+        if nearestaoi.x < get_minX(cluster):
             #print('left')
             shift_dir(cluster, 'left', 1)
             moved = True
-        elif nearestaoi[2] > get_minX(cluster):
+        elif nearestaoi.x > get_minX(cluster):
             #print('right')
             shift_dir(cluster, 'right', 1)
             moved = True
-        if nearestaoi[3] < get_minY(cluster):
+        if nearestaoi.y < get_minY(cluster):
             #print('up')
             shift_dir(cluster, 'up', 1)
             moved = True
-        elif nearestaoi[3] > get_minY(cluster):
+        elif nearestaoi.y > get_minY(cluster):
             #print('down')
             shift_dir(cluster, 'down', 1)
             moved = True
@@ -258,8 +300,8 @@ def get_maxX(cluster):
     """
     maxX = 0
     for point in cluster:
-        if point[5] > maxX:
-            maxX = point[5]
+        if point.autoxCorrected > maxX:
+            maxX = point.autoxCorrected
     return maxX
 
 
@@ -274,8 +316,8 @@ def get_maxY(cluster):
     """
     maxY = 0
     for point in cluster:
-        if point[6] > maxY:
-            maxY = point[6]
+        if point.autoyCorrected > maxY:
+            maxY = point.autoyCorrected
     return maxY
 
 
@@ -288,10 +330,10 @@ def get_minX(cluster):
     POSTCONDITION(S):
         retuen the smallest autoxCorrected value
     """
-    minX = cluster[0][0]
+    minX = cluster[0].x
     for point in cluster:
-        if point[5] < minX:
-            minX = point[5]
+        if point.autoxCorrected < minX:
+            minX = point.autoxCorrected
     return minX
 
 
@@ -304,10 +346,10 @@ def get_minY(cluster):
     POSTCONDITION(S):
         return the smallest autoyCorrected value in cluster
     """
-    minY = cluster[0][1]
+    minY = cluster[0].y
     for point in cluster:
-        if point[6] < minY:
-            minY = point[6]
+        if point.autoyCorrected < minY:
+            minY = point.autoyCorrected
     return minY
 
 
@@ -327,7 +369,7 @@ def find_nearest_aoi(cluster, listofaois):
     minY = get_minY(cluster)
     nearestaoi = listofaois[0]
     for i in range(1, len(listofaois)):
-        if abs(listofaois[i][2] - minX) < abs(nearestaoi[2] - minX) and abs(listofaois[i][3] - minY) < abs(nearestaoi[3] - minY):
+        if abs(listofaois[i].x - minX) < abs(nearestaoi.x - minX) and abs(listofaois[i].y - minY) < abs(nearestaoi.y - minY):
             nearestaoi = listofaois[i]
 
     return nearestaoi

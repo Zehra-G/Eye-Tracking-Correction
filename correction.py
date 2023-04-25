@@ -46,23 +46,6 @@ def assign_categories_to_tokens(token_list):
             categories.append(None) # set None for unknown category
     
     return categories
-
-def generate_fix_2(aois_with_tokens):
-    
-    # creates fixations like the usual
-    fix = generate_fixations_code(aois_with_tokens)
-   
-   # adds start-time and endtime
-   
-    start = 0
-    end = 0
-    for i in range(len(fix)):
-        fix[i].append(start)
-        end = fix[i][2] + start
-        fix[i].append(end)
-        start = end
-       
-    return fix
        
    
 
@@ -174,6 +157,16 @@ def generate_fixations_code(aois_with_tokens):
 # write a function generate offset error as described in the paper
 def error_offset(x_offset, y_offset, fixations):
     '''creates error to move fixations (shift in dissertation)'''
+    results = []
+    for fix in fixations:
+        x, y, duration = fix[0], fix[1], fix[2]
+        
+        results.append([x+x_offset, y+y_offset, duration])
+        
+    return results
+        
+        
+        
     
     pass
 
