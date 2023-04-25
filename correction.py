@@ -180,10 +180,7 @@ def error_offset(x_offset, y_offset, fixations):
         
     return results
         
-        
-        
     
-    pass
 
 
 # noise
