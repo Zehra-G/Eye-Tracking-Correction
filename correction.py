@@ -69,23 +69,27 @@ def generate_fixations_code(aois_with_tokens):
     
     # raddom but with a probability distribution
     prob_list = []
+    # Define probabilities for different token categories
     for p in categories:
+        # Tokens that are comments or punctuation are often skipped over quickly
         if p in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
             prob = 0.1
+        # Keywords and operators are often important for understanding code, so they are fixated on more often
         elif p in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
             prob = 0.6
+        # Identifiers (e.g., variable names) are also important, but not as much as keywords, so they are fixated on less often
         elif p == TokenCategory.IDENTIFIER:
             prob = 0.8
+        # All other token categories have a moderate fixation probability
         else:
             prob = 0.4
+
         
         prob_list.append(prob)
         
     aois_with_tokens['Probability'] = prob_list
     
     aois_with_tokens = aois_with_tokens.sample(n=len(aois_with_tokens), replace=True, weights='Probability', axis=0)
-    
-        
     
     while index < len(aois_with_tokens):
         aoi = aois_with_tokens.iloc[index]
@@ -101,13 +105,18 @@ def generate_fixations_code(aois_with_tokens):
 
         # skipping
         if category in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
+            # Set a high probability of skipping tokens that are punctuation or comments, as they are often non-essential to understanding the code.
             skip_probability = 0.9
         elif category in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
+            # Set a lower probability of skipping tokens that are keywords or operators, as they may be more essential to understanding the code.
             skip_probability = 0.5
         elif category == TokenCategory.IDENTIFIER:
+            # Set a moderate probability of skipping tokens that are identifiers (variables, functions, etc.), as they are typically more essential to understanding the code than punctuation or comments but less essential than keywords or operators.
             skip_probability = 0.6
         else:
+            # Set a high probability of skipping tokens that are anything else, as they are often less essential to understanding the code.
             skip_probability = 0.8
+
         
         if len(token) < 5 and random.random() < skip_probability:
             skip_count += 1
@@ -118,15 +127,21 @@ def generate_fixations_code(aois_with_tokens):
         
         # regression and reread
         if last_skipped:
+            # if the last token was skipped, it's likely that the user will need to reread
             reread_probability = 0.01
         elif category in [TokenCategory.COMMENT, TokenCategory.PUNCTUATION]:
+            # comments and punctuation don't usually require rereading
             reread_probability = 0.2
         elif category in [TokenCategory.KEYWORD, TokenCategory.OPERATOR]:
+            # keywords and operators can be more complex and may require rereading
             reread_probability = 0.1
         elif category == TokenCategory.IDENTIFIER:
+            # identifiers are typically shorter and easier to read, so they may not require rereading
             reread_probability = 0.05
         else:
+            # for all other categories, the default probability is 0
             reread_probability = 0
+
         
         if random.random() < reread_probability:
             reread_count += 1
