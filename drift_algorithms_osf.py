@@ -66,62 +66,45 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from sklearn.mixture import GaussianMixture
 
-def fix_align(fixation_XY, line_Y):
-    # Linear regression used to assign fixations to text lines:
-    # Algorithm parameterized by slope, vertical offset, and standard deviation:
+# The basic idea behind the algorithm is to use linear regression to assign each fixation to a text line. There is one regression line for each text line. The regression lines are parameterized by a slope, vertical offset, and standard deviation. The slopes of the regression lines can vary from horizontal, and the regression line initially passes through the start of the text line. The vertical offsets allow for an overall bias for the measured fixations to be above or below the text lines, by moving the start of the regression lines above or below the start of the text lines. The standard deviations—that is, the standard deviations of the normal distributions centered on the regression lines—are assumed to be constant along the regression lines. The slope, vertical offset, and standard deviation of each regression line is found that maximizes the likelihood of the measured, uncorrected fixations. Because it is assumed that calibration error is relatively consistent across the display, each regression line shares a common slope, vertical offset, and standard deviation. The vertical difference between the regression lines is assumed to be the vertical difference between the text lines.
+# Each fixation is assigned to the text line associated with the highest-likelihood regression line. The y location of the fixation is then set to the y location of that text line, but the x-location is not changed. Outliers are fixations that are too far from any regression line, in standard deviation units. If the highest- and second-highest regression line likelihoods are too similar, the fixation is marked as being ambiguous. An option available in the software allows ambiguous points bounded by points that are unambiguously classified into the same text line to be reclassified into that text line (the “run rule”).
+def fix_align(fixation_XY, word_XY, x_thresh=512, n_nearest_lines=3):
+	line_Y = np.unique(word_XY[:, 1])
+	n = len(fixation_XY)
+	diff_X = np.diff(fixation_XY[:, 0])
+	end_line_indices = list(np.where(diff_X < -x_thresh)[0] + 1)
+	end_line_indices.append(n)
+	start_of_line = 0
+	for end_of_line in end_line_indices:
+		gaze_line = fixation_XY[start_of_line:end_of_line]
+		mean_y = np.mean(gaze_line[:, 1])
+		# Find the n_nearest_lines lines to the mean_y
+		nearest_lines = np.argsort(abs(line_Y - mean_y))[:n_nearest_lines]
+		# Find the best slope, intercept, and standard deviation for the n_nearest_lines lines
+		best_slope, best_intercept, best_std = find_best_line(gaze_line, line_Y[nearest_lines])
+		# Assign each fixation to the line with the best slope, intercept, and standard deviation
+		for fixation_i in range(start_of_line, end_of_line):
+			fixation_XY[fixation_i, 1] = best_slope * fixation_XY[fixation_i, 0] + best_intercept
+		start_of_line = end_of_line
+	return fixation_XY
 
-    # Fixation data:
-    fixation_X = fixation_XY[:, 0]
-    fixation_Y = fixation_XY[:, 1]
-
-    # Assign fixations to text lines using Gaussian mixture model:
-    n_components = len(line_Y)
-    gmm = GaussianMixture(n_components=n_components, covariance_type='diag', max_iter=100)
-
-    line_params = []
-    fixation_Y_new = np.zeros_like(fixation_Y)
-
-    # Find the minimum and maximum Y values
-    min_y = np.min(line_Y)
-    max_y = np.max(line_Y)
-
-    for i, line_y in enumerate(line_Y):
-        # Check if the current line is the last line
-        if i == len(line_Y) - 1:
-            next_line_y = max_y + 1  # set the next line y value as greater than the maximum y value
-        else:
-            next_line_y = line_Y[i+1]  # set the next line y value as the next line in the list
-
-        # Text line data:
-        line_X = np.mean(fixation_X[(fixation_Y >= line_y) & (fixation_Y < next_line_y)]) * np.ones_like(fixation_Y[(fixation_Y >= line_y) & (fixation_Y < next_line_y)])
-        line_X = np.repeat(line_X, len(fixation_Y[(fixation_Y >= line_y) & (fixation_Y < next_line_y)]) // len(line_X))
-
-        # Linear regression:
-        def linear_regression(params):
-            slope, offset, sigma = params
-            line_Y_hat = slope * line_X + offset
-            return np.sum(norm.pdf(fixation_Y[fixation_Y == line_y], line_Y_hat, sigma))
-
-        # Optimize linear regression:
-        params = minimize(linear_regression, [0, 0, 1], method='Nelder-Mead').x
-        slope, offset, sigma = params
-        line_params.append((slope, offset, sigma))
-
-        # Assign fixations to text lines:
-        line_Y_hat = slope * line_X + offset
-        gmm.fit(line_Y_hat.reshape(-1, 1))
-        line_weights = gmm.predict_proba(line_Y_hat.reshape(-1, 1))
-        line_i = np.argmax(line_weights, axis=1)
-        fixation_Y_new[fixation_Y == line_y] = np.take(line_Y, line_i)
-
-    # Combine X and Y coordinates:
-    fixation_XY[:, 1] = fixation_Y_new
-
-    return fixation_XY
-
-
-
-
+def find_best_line(gaze_line, line_Y):
+	# Find the best slope, intercept, and standard deviation for the n_nearest_lines lines
+	best_slope = 0
+	best_intercept = 0
+	best_std = 0
+	best_likelihood = -np.inf
+	for slope in np.linspace(-1, 1, 100):
+		for intercept in np.linspace(line_Y[0], line_Y[-1], 100):
+			std = np.std(gaze_line[:, 1] - (slope * gaze_line[:, 0] + intercept))
+			likelihood = np.sum(norm.logpdf(gaze_line[:, 1], loc=slope * gaze_line[:, 0] + intercept, scale=std))
+			if likelihood > best_likelihood:
+				best_slope = slope
+				best_intercept = intercept
+				best_std = std
+				best_likelihood = likelihood
+	return best_slope, best_intercept, best_std	
+    
 
 ######################################################################
 # CLUSTER
