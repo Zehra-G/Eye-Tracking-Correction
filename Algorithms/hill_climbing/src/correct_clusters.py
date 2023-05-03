@@ -17,6 +17,55 @@ along with Fixation-Correction-Sourcecode.  If not, see <http://www.gnu.org/lice
 Copyright 2015
 Author: Chris Palmer
 """
+import pandas
+
+class Aoi():
+    """
+    Aoi (str, str, int, int, int, int)
+    CONSTRUCTION:
+        set internal variable to the ones read from csv
+
+    METHOD(S):
+        bool containsPoint(int, int)
+        PRECONDITION(S):
+            given valid x and y ints
+        POSTCONDITION(S):
+            returns whether or not the given values are within the AOI rectangle
+
+    MEMBER VARIABLE(S):
+    kind str - type of AOI, line/subline
+    name str - name of th aoi
+    x int - top left x coordinate
+    y int - top left y coordinate
+    width int - width of rectangle
+    height int - height of rectangle
+    """
+    def __init__(self, kind, name, x, y, width, height):
+        self.kind = kind
+        self.name = name
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+
+    def containsPoint(self, pointx, pointy):
+        if pointx > self.x and pointx < (self.x + self.width):
+            if pointy > self.y and pointy < (self.y + self.width):
+                return True
+        return False
+
+def make_aois(aois):
+    
+    aois = aois.values.tolist()
+    aois_list =[]
+    for a in aois:
+        aois_list.append(Aoi(a[0], a[1], a[2], a[3], a[4], a[5]))
+        
+    return aois_list
+    
+    
+    
+    pass
 
 
 def correct_cluster(listofclusters, listofaois):
@@ -40,6 +89,7 @@ def correct_cluster(listofclusters, listofaois):
 
         note: all passes are done by reference
     """
+    listofaois = make_aois(listofaois)
     for cluster in listofclusters:
         for point in cluster:
             point.autoxCorrected = point.x
@@ -63,7 +113,7 @@ def find_score_multi_aoi(cluster, listofaois):
     for point in cluster:
         if debug_points.count(point) > 0:
             # todo throw an exception?
-            print "point repeat error"
+            print ("point repeat error")
         debug_points.append(point)
 
         for aoi in listofaois:

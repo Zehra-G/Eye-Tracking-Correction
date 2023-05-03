@@ -19,14 +19,90 @@ Author: Chris Palmer
 """
 
 import math
-import numpy
-import globalVariables
+import numpy 
+
+class Point():
+    """
+    Point (int, int, int, int, int, str, int, int, str)
+    CONSTRUCTION:
+        set internal variables to param values
+
+    METHOD(S):
+        bool/float xCorrectionCoefficient()
+        PRECONDITION(S):
+            xCorrected != x
+
+        POSTCONDITION(S):
+            return (xautocorrected-x)/(xCorrected-x)
+
+        bool/float yCorrectionCoefficient()
+        PRECONDITION(S):
+            yCorrected != y
+        POSTCONDITION(S):
+            return (yautocorrected-y)/(yCorrected-y)
+
+    MEMBER VARIABLE(S):
+        x int - the original x coordinate of fixation point
+        y int - the original y coordinate of fixation point
+        duration int - the time ms? spent on that fixation
+        startTime int - the start time ms? of the fixation point
+        endTime int - the end time ms? of the fixation point
+        aoi str - the type of aoi that the point is associated with line/subline can be None
+        xCorrected int - manually corrected x coordinate
+        yCorrected int - manually corrected y coordinate
+        filename str - name of the file for fixation data
+        autoxCorrected int - auto corrected x coordinate
+        autoyCorrected int - auto corrected y coordinate
+    """
+    def __init__(self, x, y, duration, startTime, endTime, aoi, xCorrected, yCorrected, filename):
+        self.x = x
+        self.y = y
+        self.duration = duration
+        self.startTime = startTime
+        self.endTime = endTime
+        self.aoi = aoi
+        self.xCorrected = xCorrected
+        self.yCorrected = yCorrected
+        self.filename = filename
+        self.autoxCorrected = None
+        self.autoyCorrected = None
+
+    def xCorrectionCoefficient(self):
+        if not self.autoxCorrected:
+            return (self.autoxCorrected-self.x)/(self.xCorrected-self.x)
+        else:
+            return False
+
+    def yCorrectionCoeffieient(self):
+        if not self.autoyCorrected:
+            return (self.autoyCorrected-self.y)/(self.yCorrected-self.y)
+        else:
+            return False
+        
 
 # global variable(s)
 
 NUMBER_OF_ELEMENTS_TO_REMOVE = 0
 
 # function to check if object exists in list
+
+def make_points(fixations):
+    
+    fixations = fixations.tolist()
+    start = 0
+    end = 0
+    for i in range(len(fixations)):
+        fixations[i].append(start)
+        end = fixations[i][2] + start
+        fixations[i].append(end)
+        start = end
+        
+    point_list = []
+    for point in fixations:
+        point_list.append(Point(point[0], point[1], point[2], point[3], point[4], None, None, None, None))
+        
+           
+    return point_list
 
 
 def make_one_cluster_per_file(listOfPoints):
@@ -65,9 +141,6 @@ def contains(list, filter):
     return False
 
 
-f = globalVariables.files
-
-
 def median(lst):
     """
     <estimated return type> <function_name> (<parameters>)
@@ -98,12 +171,17 @@ def make_cluster_refactor(listOfPoints):
     # variables
     # lookbackQueue[0]  = oldest element
     # lookbackQueue[-1] = newest element
+    
+    
     lookbackQueue = []
     listOfClusters = []
+    listOfPoints = make_points(listOfPoints)
     totalMedian = find_median(listOfPoints)
     lookbackQueueInitialized = False
     firstLoop = True
     output = open('overflowlog.txt', 'w')
+    
+    
 
     for point in listOfPoints:
         # Initialize the queue as full
@@ -114,7 +192,7 @@ def make_cluster_refactor(listOfPoints):
 
             else:
                 lookbackQueue.append(point)
-                if lookbackQueue[-1].startTime - lookbackQueue[0].startTime < globalVariables.LOOKBACK_SIZE_MS:
+                if lookbackQueue[-1].startTime - lookbackQueue[0].startTime < 15000:
                     continue
                 else:
                     lookbackQueueInitialized = True
@@ -122,7 +200,7 @@ def make_cluster_refactor(listOfPoints):
         # todo ponder the questionable nature of possibly losing a point
         # maybe check for clusters during initalization
         else:
-            while lookbackQueue[-1].startTime - lookbackQueue[0].startTime > globalVariables.LOOKBACK_SIZE_MS:
+            while lookbackQueue[-1].startTime - lookbackQueue[0].startTime > 15000:
                 lookbackQueue.pop(0)
             if check_if_cluster_too_big(lookbackQueue, totalMedian):
                 # todo ouput to log file
@@ -149,6 +227,7 @@ def make_cluster_refactor(listOfPoints):
                 lookbackQueueInitialized = False
 
             # else there is a cluster in progress. Do nothing. Move along. These aren't the droids you're looking for
+    print("Iiiiiiiiiiiiiiiiiiiiiiiiiiiii")
 
     return listOfClusters
 
@@ -204,10 +283,10 @@ def find_median(listOfPoints):
     minimum = min(pointDistances)
     maximum = max(pointDistances)
 
-    if globalVariables.MEDIAN_OFFSET > 0:
-        return numpy.median(numpy.array(pointDistances)) + (globalVariables.MEDIAN_OFFSET * (maximum - numpy.median(numpy.array(pointDistances))))
-    elif globalVariables.MEDIAN_OFFSET < 0:
-        return numpy.median(numpy.array(pointDistances)) - (globalVariables.MEDIAN_OFFSET * (numpy.median(numpy.array(pointDistances)) - minimum))
+    if .175 > 0:
+        return numpy.median(numpy.array(pointDistances)) + (0.175 * (maximum - numpy.median(numpy.array(pointDistances))))
+    elif 0.175 < 0:
+        return numpy.median(numpy.array(pointDistances)) - (0.175 * (numpy.median(numpy.array(pointDistances)) - minimum))
     else:
         return numpy.median(numpy.array(pointDistances))
 
@@ -238,7 +317,7 @@ def check_for_cluster(lookbackQueue, totalMedian):
         if find_distance(lookbackQueue[i], lookbackQueue[i-1]) < totalMedian:
             clusterSize += 1
         else:
-            if clusterSize >= globalVariables.MINIMUM_CLUSTER_SIZE:
+            if clusterSize >= 3:
                 return True
             else:
                 clusterSize = 0
@@ -266,7 +345,7 @@ def extract_cluster(lookbackQueue, totalMedian): # todo reread this
             else:
                 cluster.append(lookbackQueue[i])
 
-    if len(cluster) >= globalVariables.MINIMUM_CLUSTER_SIZE:
+    if len(cluster) >= 3:
         NUMBER_OF_ELEMENTS_TO_REMOVE = len(cluster)
         return cluster
     return
