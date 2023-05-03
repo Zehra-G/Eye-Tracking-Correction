@@ -66,6 +66,8 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 from sklearn.mixture import GaussianMixture
 
+
+
 # The basic idea behind the algorithm is to use linear regression to assign each fixation to a text line. There is one regression line for each text line. The regression lines are parameterized by a slope, vertical offset, and standard deviation. The slopes of the regression lines can vary from horizontal, and the regression line initially passes through the start of the text line. The vertical offsets allow for an overall bias for the measured fixations to be above or below the text lines, by moving the start of the regression lines above or below the start of the text lines. The standard deviations—that is, the standard deviations of the normal distributions centered on the regression lines—are assumed to be constant along the regression lines. The slope, vertical offset, and standard deviation of each regression line is found that maximizes the likelihood of the measured, uncorrected fixations. Because it is assumed that calibration error is relatively consistent across the display, each regression line shares a common slope, vertical offset, and standard deviation. The vertical difference between the regression lines is assumed to be the vertical difference between the text lines.
 # Each fixation is assigned to the text line associated with the highest-likelihood regression line. The y location of the fixation is then set to the y location of that text line, but the x-location is not changed. Outliers are fixations that are too far from any regression line, in standard deviation units. If the highest- and second-highest regression line likelihoods are too similar, the fixation is marked as being ambiguous. An option available in the software allows ambiguous points bounded by points that are unambiguously classified into the same text line to be reclassified into that text line (the “run rule”).
 def fix_align(fixation_XY, word_XY, x_thresh=512, n_nearest_lines=3):
@@ -582,3 +584,37 @@ def filter_out_regressions(fixations, words_sorted, aoi_lines, correct_data):
 			new_corrected_data.append(correct_data[i])
 
 	return new_fixations, new_corrected_data # return the final list of non-regression fixations
+
+# Create an optimal noise model that runs attach algorithm and then regress algorithm
+def optimal_noise_model(fixation_XY, line_Y):
+	# Attach algorithm
+	attach_XY = attach(fixation_XY, line_Y)
+	# Regress algorithm
+	regress_XY = regress(attach_XY, line_Y)
+	return regress_XY
+
+# Create an optimal slope model that runs regress algorithm and then stretch algorithm
+def optimal_slope_model(fixation_XY, line_Y):
+	# Regress algorithm
+	regress_XY = regress(fixation_XY, line_Y)
+	# Stretch algorithm
+	stretch_XY = stretch(regress_XY, line_Y)
+	return stretch_XY
+
+# Create an optimal shift model that runs cluster algorithm and then merge algorithm
+def optimal_shift_model(fixation_XY, line_Y):
+	# Cluster algorithm
+	cluster_XY = cluster(fixation_XY, line_Y)
+	# Merge algorithm
+	merge_XY = merge(cluster_XY, line_Y)
+	return merge_XY
+
+# Create an optimal offset model that runs attach algorithm and then regress algorithm and then stretch algorithm
+def optimal_offset_model(fixation_XY, line_Y):
+	# Attach algorithm
+	attach_XY = attach(fixation_XY, line_Y)
+	# Regress algorithm
+	regress_XY = regress(attach_XY, line_Y)
+	# Stretch algorithm
+	stretch_XY = stretch(regress_XY, line_Y)
+	return stretch_XY
